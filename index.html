@@ -591,9 +591,14 @@
         <div>
           <p class="text-sm text-gray-600">© 2024 Mr. Davis's First Grade Class</p>
         </div>
-        <button id="editModeBtn" class="px-4 py-2 rounded-xl font-semibold text-white shadow-soft" style="background: var(--md-slate);">
-          ✏️ Edit Mode
-        </button>
+        <div class="flex gap-3">
+          <button id="saveChangesBtn" class="px-4 py-2 rounded-xl font-semibold text-white shadow-soft" style="background: var(--md-coral); display: none;">
+            💾 Save Changes
+          </button>
+          <button id="editModeBtn" class="px-4 py-2 rounded-xl font-semibold text-white shadow-soft" style="background: var(--md-slate);">
+            ✏️ Edit Mode
+          </button>
+        </div>
       </div>
     </div>
   </footer>
@@ -659,8 +664,50 @@
       document.getElementById('toggleHighContrast').onclick=function(){
         document.body.classList.toggle('dark');
       };
+      
+      // Save Changes button
+      document.getElementById('saveChangesBtn').onclick = saveChangesToSheet;
     });
+    
+    // Track original values for change detection
+    let originalValues = {};
+    
+    function storeOriginalValues() {
+      originalValues = {};
+      document.querySelectorAll('[data-edit="teacher"]').forEach((el, index) => {
+        const key = `element_${index}`;
+        if (el.tagName === 'UL') {
+          // For lists, store the inner HTML
+          originalValues[key] = el.innerHTML;
+        } else {
+          // For text content
+          originalValues[key] = el.textContent || el.innerText || '';
+        }
+      });
+    }
+    
+    function hasChanges() {
+      let hasChanges = false;
+      document.querySelectorAll('[data-edit="teacher"]').forEach((el, index) => {
+        const key = `element_${index}`;
+        const originalValue = originalValues[key] || '';
+        let currentValue = '';
+        
+        if (el.tagName === 'UL') {
+          currentValue = el.innerHTML;
+        } else {
+          currentValue = el.textContent || el.innerText || '';
+        }
+        
+        if (originalValue !== currentValue) {
+          hasChanges = true;
+        }
+      });
+      return hasChanges;
+    }
+    
     function enterEditMode(){
+      storeOriginalValues();
       document.body.classList.add('editing');
       document.querySelectorAll('[data-edit="teacher"]').forEach(el=>el.contentEditable=true);
       document.querySelectorAll('.teacher-only-edit').forEach(el=>{el.disabled=false;el.readOnly=false;});
@@ -676,7 +723,160 @@
         document.getElementById('pinOverlay').classList.add('show');
         document.getElementById('pinInput').focus();
       };
+      
+      // Check for changes and show/hide save button
+      const saveBtn = document.getElementById('saveChangesBtn');
+      if (hasChanges()) {
+        saveBtn.style.display = 'block';
+      } else {
+        saveBtn.style.display = 'none';
+      }
     }
+    function collectEditableFieldData() {
+      const data = {};
+      
+      // Week text
+      const weekEl = document.getElementById('weekText');
+      if (weekEl) data.week = weekEl.textContent || '';
+      
+      // Recap text
+      const recapEl = document.getElementById('recapText');
+      if (recapEl) data.recap = recapEl.textContent || '';
+      
+      // Events list - collect all event items
+      const eventsContainer = document.getElementById('eventsList');
+      if (eventsContainer) {
+        const events = [];
+        eventsContainer.querySelectorAll('.event-item').forEach(item => {
+          const emoji = item.querySelector('.event-emoji')?.textContent || '';
+          const text = item.querySelector('.event-text')?.textContent || '';
+          if (text) {
+            events.push({ icon: emoji, text: text });
+          }
+        });
+        data.dates_json = JSON.stringify(events);
+      }
+      
+      // Looking ahead items
+      const lookingAheadSection = Array.from(document.querySelectorAll('div.rounded-2xl')).find(div =>
+        div.querySelector('h3') && div.querySelector('h3').textContent.includes('Looking Ahead')
+      );
+      if (lookingAheadSection) {
+        const ul = lookingAheadSection.querySelector('ul[data-edit="teacher"]');
+        if (ul) {
+          const items = Array.from(ul.querySelectorAll('li')).map(li => li.textContent.replace(/^•\s*/, ''));
+          data.looking_ahead = items.join('\n');
+        }
+      }
+      
+      // Snacks grid - collect snack items  
+      const snacksGrid = document.querySelector('.grid.grid-cols-1.gap-3');
+      if (snacksGrid) {
+        const snacks = [];
+        snacksGrid.querySelectorAll('.grid.grid-cols-\\[auto_1fr\\].gap-2').forEach(item => {
+          const emoji = item.querySelector('span:first-child')?.textContent || '';
+          const name = item.querySelector('span:nth-child(2)')?.textContent || '';
+          if (name) {
+            snacks.push({ emoji: emoji, name: name });
+          }
+        });
+        data.snacks_json = JSON.stringify(snacks);
+      }
+      
+      // Scholar info
+      const scholarNameEl = document.querySelector('[data-page-panel="scholar"] h2[data-edit="teacher"]');
+      if (scholarNameEl) data.scholar_name = scholarNameEl.textContent || '';
+      
+      const scholarBlurbEl = document.querySelector('[data-page-panel="scholar"] p[data-edit="teacher"]');
+      if (scholarBlurbEl) data.scholar_blurb = scholarBlurbEl.textContent || '';
+      
+      // Skills section
+      const skillsDescEl = document.querySelector('[data-page-panel="skills"] p[data-edit="teacher"]');
+      if (skillsDescEl) data.skills_text = skillsDescEl.textContent || '';
+      
+      const skillsUl = document.querySelector('[data-page-panel="skills"] ul[data-edit="teacher"]');
+      if (skillsUl) {
+        const sounds = Array.from(skillsUl.querySelectorAll('li')).map(li => li.textContent);
+        data.sounds_json = JSON.stringify(sounds);
+      }
+      
+      // Listening section
+      const listeningDescEl = document.querySelector('[data-page-panel="listening"] p[data-edit="teacher"]');
+      if (listeningDescEl) data.listening_text = listeningDescEl.textContent || '';
+      
+      const listeningUl = document.querySelector('[data-page-panel="listening"] ul[data-edit="teacher"]');
+      if (listeningUl) {
+        const asks = Array.from(listeningUl.querySelectorAll('li')).map(li => li.textContent);
+        data.ask_json = JSON.stringify(asks);
+      }
+      
+      // Math section
+      const mathDescEl = document.querySelector('[data-page-panel="math"] p[data-edit="teacher"]');
+      if (mathDescEl) data.math_text = mathDescEl.textContent || '';
+      
+      const mathUl = document.querySelector('[data-page-panel="math"] ul[data-edit="teacher"]');
+      if (mathUl) {
+        const vocab = Array.from(mathUl.querySelectorAll('li')).map(li => li.textContent);
+        data.math_vocab_json = JSON.stringify(vocab);
+      }
+      
+      // Calendar URL
+      const calendarLink = document.getElementById('schoolCalendarLink');
+      if (calendarLink) data.calendar_url = calendarLink.href || '';
+      
+      return data;
+    }
+    
+    async function saveChangesToSheet() {
+      const saveBtn = document.getElementById('saveChangesBtn');
+      const originalText = saveBtn.textContent;
+      
+      try {
+        // Show saving state
+        saveBtn.textContent = '⏳ Saving...';
+        saveBtn.disabled = true;
+        
+        // Collect all editable field data
+        const data = collectEditableFieldData();
+        
+        // POST to Google Sheets
+        const response = await fetch(GOOGLE_SHEETS_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Show success state
+        saveBtn.textContent = '✅ Saved!';
+        
+        // Reload data from Google Sheets
+        setTimeout(async () => {
+          const updatedData = await fetchSheetData();
+          populateDataFromSheet(updatedData);
+          
+          // Hide save button and reset original values
+          saveBtn.style.display = 'none';
+          saveBtn.textContent = originalText;
+          saveBtn.disabled = false;
+          originalValues = {};
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Failed to save changes:', error);
+        saveBtn.textContent = '❌ Save Failed';
+        setTimeout(() => {
+          saveBtn.textContent = originalText;
+          saveBtn.disabled = false;
+        }, 2000);
+      }
+    }
+    
     // Home tab: Add event
     function addEvent() {
       const emoji = prompt('Enter emoji for event:', '🎉');
