@@ -767,5 +767,300 @@
       }
     }
   </script>
+
+  <!-- Google Sheets Live Data Integration Script -->
+  <script>
+    // Google Sheets Apps Script Web App URL
+    const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwE3FSYbPmqdfTvAAEXEW86Quv-7jE7k6d1cALmx27bhO1Wd-cZD6WqR-Jays5Z5HkROQ/exec';
+
+    // Function to fetch data from Google Sheets
+    async function fetchSheetData() {
+      try {
+        console.log('Fetching data from Google Sheets...');
+        const response = await fetch(GOOGLE_SHEETS_URL);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Data fetched successfully:', data);
+        return data;
+      } catch (error) {
+        console.error('Error fetching data from Google Sheets:', error);
+        return null;
+      }
+    }
+
+    // Function to update week text
+    function updateWeekText(weekData) {
+      const weekElement = document.getElementById('weekText');
+      if (weekElement && weekData) {
+        weekElement.textContent = weekData;
+      }
+    }
+
+    // Function to update recap text
+    function updateRecapText(recapData) {
+      const recapElement = document.getElementById('recapText');
+      if (recapElement && recapData) {
+        recapElement.textContent = recapData;
+      }
+    }
+
+    // Function to update events list
+    function updateEventsList(eventsData) {
+      const eventsContainer = document.getElementById('eventsList');
+      if (eventsContainer && eventsData && Array.isArray(eventsData)) {
+        // Clear existing events but keep the structure
+        eventsContainer.innerHTML = '';
+        
+        // Add new events from sheet data
+        eventsData.forEach(event => {
+          const eventDiv = document.createElement('div');
+          eventDiv.className = 'event-item flex items-center gap-3 p-3 rounded-xl bg-yellow-50 border';
+          eventDiv.style.borderColor = 'var(--md-mustard)';
+          eventDiv.innerHTML = `
+            <span class="event-emoji text-xl" data-edit="teacher" contenteditable="false">${event.emoji || '🎉'}</span>
+            <span class="event-text font-semibold flex-1" data-edit="teacher" contenteditable="false">${event.text || ''}</span>
+            <button class="edit-only text-red-500 hover:text-red-700" onclick="this.parentNode.remove()">✖</button>
+          `;
+          eventsContainer.appendChild(eventDiv);
+        });
+      }
+    }
+
+    // Function to update looking ahead section
+    function updateLookingAhead(lookingAheadData) {
+      const lookingAheadElement = document.querySelector('[data-edit="teacher"]');
+      // Find the specific looking ahead ul element
+      const lookingAheadContainer = Array.from(document.querySelectorAll('ul[data-edit="teacher"]')).find(ul => 
+        ul.closest('div').querySelector('h3')?.textContent?.includes('Looking Ahead')
+      );
+      
+      if (lookingAheadContainer && lookingAheadData && Array.isArray(lookingAheadData)) {
+        lookingAheadContainer.innerHTML = '';
+        lookingAheadData.forEach(item => {
+          const li = document.createElement('li');
+          li.textContent = `• ${item}`;
+          lookingAheadContainer.appendChild(li);
+        });
+      }
+    }
+
+    // Function to update snacks grid
+    function updateSnacksGrid(snacksData) {
+      const snacksContainer = document.getElementById('snacksGrid');
+      if (snacksContainer && snacksData && Array.isArray(snacksData)) {
+        // Clear existing snacks but keep the structure for adding new ones
+        snacksContainer.innerHTML = '';
+        
+        // Add snacks from sheet data
+        snacksData.forEach(snack => {
+          const snackDiv = document.createElement('div');
+          snackDiv.className = 'p-4 rounded-xl bg-white';
+          snackDiv.style.border = '1px solid color-mix(in oklab, var(--md-slate) 35%, var(--md-white) 65%)';
+          snackDiv.innerHTML = `
+            <div class="flex items-center gap-3 mb-3">
+              <input type="checkbox" class="w-4 h-4 snack-check">
+              <span class="text-xl">${snack.emoji || '🍎'}</span>
+              <span class="font-medium">${snack.name || ''}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="text" placeholder="Your name" class="flex-1 px-3 py-2 rounded-lg text-sm snack-name" style="background: var(--md-cream);">
+              <button class="px-3 py-2 rounded-lg text-white text-sm font-semibold" style="background: var(--md-coral);" onclick="claimSnack(this)">Save</button>
+              <button class="text-gray-400 hover:text-red-500" onclick="this.closest('.p-4').remove()">✖</button>
+            </div>
+          `;
+          snacksContainer.appendChild(snackDiv);
+        });
+      }
+    }
+
+    // Function to update scholar info
+    function updateScholarInfo(scholarData) {
+      if (scholarData) {
+        // Update scholar name
+        const scholarName = document.querySelector('[data-page-panel="scholar"] h3[data-edit="teacher"]');
+        if (scholarName && scholarData.name) {
+          scholarName.textContent = scholarData.name;
+        }
+        
+        // Update scholar description
+        const scholarDesc = document.querySelector('[data-page-panel="scholar"] p[data-edit="teacher"]');
+        if (scholarDesc && scholarData.description) {
+          scholarDesc.textContent = scholarData.description;
+        }
+      }
+    }
+
+    // Function to update skills section
+    function updateSkillsSection(skillsData) {
+      if (skillsData) {
+        // Update skills description
+        const skillsDesc = document.querySelector('[data-page-panel="skills"] p[data-edit="teacher"]');
+        if (skillsDesc && skillsData.description) {
+          skillsDesc.textContent = skillsData.description;
+        }
+        
+        // Update skills vocabulary list
+        const skillsVocab = document.querySelector('[data-page-panel="skills"] ul[data-edit="teacher"]');
+        if (skillsVocab && skillsData.vocabulary && Array.isArray(skillsData.vocabulary)) {
+          skillsVocab.innerHTML = '';
+          skillsData.vocabulary.forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            skillsVocab.appendChild(li);
+          });
+        }
+      }
+    }
+
+    // Function to update listening section
+    function updateListeningSection(listeningData) {
+      if (listeningData) {
+        // Update listening description
+        const listeningDesc = document.querySelector('[data-page-panel="listening"] p[data-edit="teacher"]');
+        if (listeningDesc && listeningData.description) {
+          listeningDesc.textContent = listeningData.description;
+        }
+        
+        // Update listening questions list
+        const listeningQuestions = document.querySelector('[data-page-panel="listening"] ul[data-edit="teacher"]');
+        if (listeningQuestions && listeningData.questions && Array.isArray(listeningData.questions)) {
+          listeningQuestions.innerHTML = '';
+          listeningData.questions.forEach(question => {
+            const li = document.createElement('li');
+            li.textContent = question;
+            listeningQuestions.appendChild(li);
+          });
+        }
+      }
+    }
+
+    // Function to update math section
+    function updateMathSection(mathData) {
+      if (mathData) {
+        // Update math description
+        const mathDesc = document.querySelector('[data-page-panel="math"] p[data-edit="teacher"]');
+        if (mathDesc && mathData.description) {
+          mathDesc.textContent = mathData.description;
+        }
+        
+        // Update math vocabulary list
+        const mathVocab = document.querySelector('[data-page-panel="math"] ul[data-edit="teacher"]');
+        if (mathVocab && mathData.vocabulary && Array.isArray(mathData.vocabulary)) {
+          mathVocab.innerHTML = '';
+          mathData.vocabulary.forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            mathVocab.appendChild(li);
+          });
+        }
+      }
+    }
+
+    // Function to update extras section
+    function updateExtrasSection(extrasData) {
+      const extrasContainer = document.getElementById('extrasGrid');
+      if (extrasContainer && extrasData && Array.isArray(extrasData)) {
+        // Clear existing extras but keep the structure
+        extrasContainer.innerHTML = '';
+        
+        // Add extras from sheet data
+        extrasData.forEach(extra => {
+          const extraDiv = document.createElement('div');
+          extraDiv.className = 'text-center p-8 rounded-2xl';
+          extraDiv.style.background = 'color-mix(in oklab, var(--md-white) 70%, var(--md-mustard) 30%)';
+          extraDiv.style.border = '1px solid color-mix(in oklab, var(--md-mustard) 60%, var(--md-white) 40%)';
+          extraDiv.innerHTML = `
+            <div class="text-6xl mb-4 emoji-edit" data-edit="teacher" contenteditable="false">${extra.emoji || '✨'}</div>
+            <h3 class="font-semibold mb-2" data-edit="teacher" contenteditable="false">${extra.title || ''}</h3>
+            <p class="text-sm" data-edit="teacher" contenteditable="false">${extra.description || ''}</p>
+            <button class="edit-only mt-2 text-red-500 hover:text-red-700 text-xs" onclick="this.closest('.text-center').remove();">Remove Card</button>
+          `;
+          extrasContainer.appendChild(extraDiv);
+        });
+      }
+    }
+
+    // Function to update about me section
+    function updateAboutMeSection(aboutMeData) {
+      if (aboutMeData) {
+        // Update favorite color
+        const favoriteColor = document.querySelector('[data-page-panel="aboutme"] .text-xs[data-edit="teacher"]');
+        if (favoriteColor && aboutMeData.favoriteColor) {
+          favoriteColor.textContent = aboutMeData.favoriteColor;
+        }
+        
+        // Update other favorites - find all the small cards
+        const favoriteCards = document.querySelectorAll('[data-page-panel="aboutme"] .text-xs[data-edit="teacher"]');
+        if (favoriteCards.length >= 4) {
+          if (aboutMeData.favoriteColor) favoriteCards[0].textContent = aboutMeData.favoriteColor;
+          if (aboutMeData.favoriteSnack) favoriteCards[1].textContent = aboutMeData.favoriteSnack;
+          if (aboutMeData.favoriteDrink) favoriteCards[2].textContent = aboutMeData.favoriteDrink;
+          if (aboutMeData.favoriteShow) favoriteCards[3].textContent = aboutMeData.favoriteShow;
+        }
+        
+        // Update about me description
+        const aboutDesc = document.querySelector('[data-page-panel="aboutme"] p[data-edit="teacher"]');
+        if (aboutDesc && aboutMeData.about) {
+          aboutDesc.textContent = aboutMeData.about;
+        }
+        
+        // Update fun facts
+        const funFactsList = document.querySelector('[data-page-panel="aboutme"] ul[data-edit="teacher"]');
+        if (funFactsList && aboutMeData.funFacts && Array.isArray(aboutMeData.funFacts)) {
+          funFactsList.innerHTML = '';
+          aboutMeData.funFacts.forEach(fact => {
+            const li = document.createElement('li');
+            li.textContent = fact;
+            funFactsList.appendChild(li);
+          });
+        }
+      }
+    }
+
+    // Main function to populate all data
+    function populateDataFromSheet(data) {
+      if (!data) {
+        console.log('No data received from Google Sheets');
+        return;
+      }
+
+      console.log('Populating page with sheet data...');
+      
+      // Update each section with the corresponding data
+      if (data.week) updateWeekText(data.week);
+      if (data.recap) updateRecapText(data.recap);
+      if (data.events) updateEventsList(data.events);
+      if (data.lookingAhead) updateLookingAhead(data.lookingAhead);
+      if (data.snacks) updateSnacksGrid(data.snacks);
+      if (data.scholar) updateScholarInfo(data.scholar);
+      if (data.skills) updateSkillsSection(data.skills);
+      if (data.listening) updateListeningSection(data.listening);
+      if (data.math) updateMathSection(data.math);
+      if (data.extras) updateExtrasSection(data.extras);
+      if (data.aboutMe) updateAboutMeSection(data.aboutMe);
+      
+      console.log('Page populated with live data from Google Sheets');
+    }
+
+    // Initialize live data when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      // Small delay to ensure all existing scripts have run
+      setTimeout(async () => {
+        const data = await fetchSheetData();
+        populateDataFromSheet(data);
+      }, 500);
+    });
+
+    // Optional: Refresh data every 5 minutes (300000ms)
+    setInterval(async () => {
+      console.log('Refreshing data from Google Sheets...');
+      const data = await fetchSheetData();
+      populateDataFromSheet(data);
+    }, 300000);
+  </script>
 </body>
 </html>
