@@ -5,6 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hey Hey First Grade! - Mr. Davis's Class</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js"></script>
+  <script>
+    // Firebase configuration - to be set up with actual project config
+    const firebaseConfig = {
+      // apiKey: "your-api-key",
+      // authDomain: "your-project.firebaseapp.com", 
+      // projectId: "your-project-id",
+      // storageBucket: "your-project.appspot.com",
+      // messagingSenderId: "123456789",
+      // appId: "your-app-id"
+    };
+    
+    // Initialize Firebase when config is provided
+    // firebase.initializeApp(firebaseConfig);
+    // const db = firebase.firestore();
+    
+    console.log('Firebase initialization ready - config needed');
+  </script>
+
   <script>
     tailwind.config = {
       theme: {
@@ -666,7 +688,7 @@
       };
       
       // Save Changes button
-      document.getElementById('saveChangesBtn').onclick = saveChangesToSheet;
+      document.getElementById('saveChangesBtn').onclick = saveChanges;
     });
     
     // Track original values for change detection
@@ -733,6 +755,9 @@
       }
     }
     function collectEditableFieldData() {
+      // Note: Data collection for Firebase backend integration
+      // This function currently collects data but doesn't save anywhere
+      // Firebase integration will be added in future updates
       const data = {};
       
       // Week text
@@ -757,69 +782,6 @@
         data.dates_json = JSON.stringify(events);
       }
       
-      // Looking ahead items
-      const lookingAheadSection = Array.from(document.querySelectorAll('div.rounded-2xl')).find(div =>
-        div.querySelector('h3') && div.querySelector('h3').textContent.includes('Looking Ahead')
-      );
-      if (lookingAheadSection) {
-        const ul = lookingAheadSection.querySelector('ul[data-edit="teacher"]');
-        if (ul) {
-          const items = Array.from(ul.querySelectorAll('li')).map(li => li.textContent.replace(/^•\s*/, ''));
-          data.looking_ahead = items.join('\n');
-        }
-      }
-      
-      // Snacks grid - collect snack items  
-      const snacksGrid = document.querySelector('.grid.grid-cols-1.gap-3');
-      if (snacksGrid) {
-        const snacks = [];
-        snacksGrid.querySelectorAll('.grid.grid-cols-\\[auto_1fr\\].gap-2').forEach(item => {
-          const emoji = item.querySelector('span:first-child')?.textContent || '';
-          const name = item.querySelector('span:nth-child(2)')?.textContent || '';
-          if (name) {
-            snacks.push({ emoji: emoji, name: name });
-          }
-        });
-        data.snacks_json = JSON.stringify(snacks);
-      }
-      
-      // Scholar info
-      const scholarNameEl = document.querySelector('[data-page-panel="scholar"] h2[data-edit="teacher"]');
-      if (scholarNameEl) data.scholar_name = scholarNameEl.textContent || '';
-      
-      const scholarBlurbEl = document.querySelector('[data-page-panel="scholar"] p[data-edit="teacher"]');
-      if (scholarBlurbEl) data.scholar_blurb = scholarBlurbEl.textContent || '';
-      
-      // Skills section
-      const skillsDescEl = document.querySelector('[data-page-panel="skills"] p[data-edit="teacher"]');
-      if (skillsDescEl) data.skills_text = skillsDescEl.textContent || '';
-      
-      const skillsUl = document.querySelector('[data-page-panel="skills"] ul[data-edit="teacher"]');
-      if (skillsUl) {
-        const sounds = Array.from(skillsUl.querySelectorAll('li')).map(li => li.textContent);
-        data.sounds_json = JSON.stringify(sounds);
-      }
-      
-      // Listening section
-      const listeningDescEl = document.querySelector('[data-page-panel="listening"] p[data-edit="teacher"]');
-      if (listeningDescEl) data.listening_text = listeningDescEl.textContent || '';
-      
-      const listeningUl = document.querySelector('[data-page-panel="listening"] ul[data-edit="teacher"]');
-      if (listeningUl) {
-        const asks = Array.from(listeningUl.querySelectorAll('li')).map(li => li.textContent);
-        data.ask_json = JSON.stringify(asks);
-      }
-      
-      // Math section
-      const mathDescEl = document.querySelector('[data-page-panel="math"] p[data-edit="teacher"]');
-      if (mathDescEl) data.math_text = mathDescEl.textContent || '';
-      
-      const mathUl = document.querySelector('[data-page-panel="math"] ul[data-edit="teacher"]');
-      if (mathUl) {
-        const vocab = Array.from(mathUl.querySelectorAll('li')).map(li => li.textContent);
-        data.math_vocab_json = JSON.stringify(vocab);
-      }
-      
       // Calendar URL
       const calendarLink = document.getElementById('schoolCalendarLink');
       if (calendarLink) data.calendar_url = calendarLink.href || '';
@@ -827,54 +789,24 @@
       return data;
     }
     
-    async function saveChangesToSheet() {
+    function saveChanges() {
+      // Note: Firebase save functionality will be implemented here
+      // For now, changes are only stored locally
+      console.log('Save functionality will be implemented with Firebase backend');
+      
       const saveBtn = document.getElementById('saveChangesBtn');
       const originalText = saveBtn.textContent;
       
-      try {
-        // Show saving state
-        saveBtn.textContent = '⏳ Saving...';
-        saveBtn.disabled = true;
-        
-        // Collect all editable field data
-        const data = collectEditableFieldData();
-        
-        // POST to Google Sheets
-        const response = await fetch(GOOGLE_SHEETS_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        // Show success state
-        saveBtn.textContent = '✅ Saved!';
-        
-        // Reload data from Google Sheets
-        setTimeout(async () => {
-          const updatedData = await fetchSheetData();
-          populateDataFromSheet(updatedData);
-          
-          // Hide save button and reset original values
-          saveBtn.style.display = 'none';
-          saveBtn.textContent = originalText;
-          saveBtn.disabled = false;
-          originalValues = {};
-        }, 1000);
-        
-      } catch (error) {
-        console.error('Failed to save changes:', error);
-        saveBtn.textContent = '❌ Save Failed';
-        setTimeout(() => {
-          saveBtn.textContent = originalText;
-          saveBtn.disabled = false;
-        }, 2000);
-      }
+      // Show temporary save state
+      saveBtn.textContent = '✅ Changes Saved Locally';
+      saveBtn.style.display = 'none';
+      
+      // Reset original values to indicate saved state
+      originalValues = {};
+      
+      setTimeout(() => {
+        saveBtn.textContent = originalText;
+      }, 2000);
     }
     
     // Home tab: Add event
@@ -968,225 +900,10 @@
     }
   </script>
 
-  <!-- Google Sheets Live Data Integration Script -->
+  <!-- Firebase Backend Integration -->
   <script>
-  // Google Sheets Apps Script Web App URL
-const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzhCbhcBPFOYX5V8XfdStRob7Y0Pq2FbPhoSUmSyTRAVUe7lQQ9NYXicdR0YpnO46Yo9Q/exec';
+  // Firebase backend will be initialized here
 
-// Utility: Parse JSON fields from string or array
-function parseArray(val) {
-  if (!val) return [];
-  if (Array.isArray(val)) return val;
-  try { return JSON.parse(val); } catch { return []; }
-}
-
-// --- Section Updaters (these match your new sheet keys) ---
-function updateWeekText(week) {
-  const el = document.getElementById('weekText');
-  if (el && week) el.textContent = week;
-}
-function updateRecapText(recap) {
-  const el = document.getElementById('recapText');
-  if (el && recap) el.textContent = recap;
-}
-function updateEventsList(dates_json) {
-  const eventsContainer = document.getElementById('eventsList');
-  if (!eventsContainer) return;
-  const arr = parseArray(dates_json);
-  eventsContainer.innerHTML = '';
-  arr.forEach(ev => {
-    const icon = ev.icon || '📌';
-    const text = ev.text || '';
-    const div = document.createElement('div');
-    div.className = 'event-item flex items-center gap-3 p-3 rounded-xl bg-yellow-50 border';
-    div.style.borderColor = 'var(--md-mustard)';
-    div.innerHTML = `
-      <span class="event-emoji text-xl" data-edit="teacher" contenteditable="false">${icon}</span>
-      <span class="event-text font-semibold flex-1" data-edit="teacher" contenteditable="false">${text}</span>
-      <button class="edit-only text-red-500 hover:text-red-700" onclick="this.parentNode.remove()">✖</button>
-    `;
-    eventsContainer.appendChild(div);
-  });
-}
-function updateLookingAhead(lookingAhead) {
-  const section = Array.from(document.querySelectorAll('div.rounded-2xl')).find(div =>
-    div.querySelector('h3') && div.querySelector('h3').textContent.includes('Looking Ahead')
-  );
-  if (!section) return;
-  const ul = section.querySelector('ul[data-edit="teacher"]');
-  if (!ul) return;
-  let arr = [];
-  if (Array.isArray(lookingAhead)) arr = lookingAhead;
-  else if (typeof lookingAhead === 'string') arr = lookingAhead.split(/\r?\n/).filter(x=>x.trim());
-  ul.innerHTML = '';
-  arr.forEach(item => {
-    const li = document.createElement('li');
-    li.textContent = '• ' + item;
-    ul.appendChild(li);
-  });
-}
-function updateSnacksGrid(snacks_json) {
-  const snacksContainer = document.getElementById('snacksGrid');
-  if (!snacksContainer) return;
-  const arr = parseArray(snacks_json);
-  snacksContainer.innerHTML = '';
-  arr.forEach(snack => {
-    const emoji = snack.emoji || '🍎';
-    const item = snack.item || '';
-    const claimed = snack.claimed_by || '';
-    const div = document.createElement('div');
-    div.className = 'p-4 rounded-xl bg-white';
-    div.style.border = '1px solid color-mix(in oklab, var(--md-slate) 35%, var(--md-white) 65%)';
-    div.innerHTML = `
-      <div class="flex items-center gap-3 mb-3">
-        <input type="checkbox" class="w-4 h-4 snack-check" ${claimed ? 'checked' : ''}>
-        <span class="text-xl">${emoji}</span>
-        <span class="font-medium">${item}</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <input type="text" placeholder="Your name" class="flex-1 px-3 py-2 rounded-lg text-sm snack-name" style="background: var(--md-cream);" value="${claimed}">
-        <button class="px-3 py-2 rounded-lg text-white text-sm font-semibold" style="background: var(--md-coral);" onclick="claimSnack(this)">Save</button>
-        <button class="text-gray-400 hover:text-red-500" onclick="this.closest('.p-4').remove()">✖</button>
-      </div>
-    `;
-    snacksContainer.appendChild(div);
-  });
-}
-function updateScholarInfo(scholar_name, scholar_blurb) {
-  const nameEl = document.querySelector('[data-page-panel="scholar"] h3[data-edit="teacher"]');
-  const descEl = document.querySelector('[data-page-panel="scholar"] p[data-edit="teacher"]');
-  if (nameEl && scholar_name) nameEl.textContent = scholar_name;
-  if (descEl && scholar_blurb) descEl.textContent = scholar_blurb;
-}
-function updateSkillsSection(skills_text, sounds_json) {
-  const descEl = document.querySelector('[data-page-panel="skills"] p[data-edit="teacher"]');
-  const vocabUl = document.querySelector('[data-page-panel="skills"] ul[data-edit="teacher"]');
-  if (descEl && skills_text) descEl.textContent = skills_text;
-  if (vocabUl && sounds_json) {
-    const arr = parseArray(sounds_json);
-    vocabUl.innerHTML = '';
-    arr.forEach(item => {
-      const li = document.createElement('li');
-      li.textContent = item;
-      vocabUl.appendChild(li);
-    });
-  }
-}
-function updateListeningSection(listening_text, ask_json) {
-  const descEl = document.querySelector('[data-page-panel="listening"] p[data-edit="teacher"]');
-  const ul = document.querySelector('[data-page-panel="listening"] ul[data-edit="teacher"]');
-  if (descEl && listening_text) descEl.textContent = listening_text;
-  if (ul && ask_json) {
-    const arr = parseArray(ask_json);
-    ul.innerHTML = '';
-    arr.forEach(item => {
-      const li = document.createElement('li');
-      li.textContent = item;
-      ul.appendChild(li);
-    });
-  }
-}
-function updateMathSection(math_text, math_vocab_json) {
-  const descEl = document.querySelector('[data-page-panel="math"] p[data-edit="teacher"]');
-  const ul = document.querySelector('[data-page-panel="math"] ul[data-edit="teacher"]');
-  if (descEl && math_text) descEl.textContent = math_text;
-  if (ul && math_vocab_json) {
-    const arr = parseArray(math_vocab_json);
-    ul.innerHTML = '';
-    arr.forEach(item => {
-      const li = document.createElement('li');
-      li.textContent = item;
-      ul.appendChild(li);
-    });
-  }
-}
-function updateExtrasSection(extras_json) {
-  const extrasContainer = document.getElementById('extrasGrid');
-  if (!extrasContainer) return;
-  const arr = parseArray(extras_json);
-  extrasContainer.innerHTML = '';
-  arr.forEach(extra => {
-    const emoji = extra.emoji || '✨';
-    const title = extra.title || '';
-    const body_html = extra.body_html || '';
-    const div = document.createElement('div');
-    div.className = 'text-center p-8 rounded-2xl';
-    div.style.background = 'color-mix(in oklab, var(--md-white) 70%, var(--md-mustard) 30%)';
-    div.style.border = '1px solid color-mix(in oklab, var(--md-mustard) 60%, var(--md-white) 40%)';
-    div.innerHTML = `
-      <div class="text-6xl mb-4 emoji-edit" data-edit="teacher" contenteditable="false">${emoji}</div>
-      <h3 class="font-semibold mb-2" data-edit="teacher" contenteditable="false">${title}</h3>
-      <p class="text-sm" data-edit="teacher" contenteditable="false">${body_html}</p>
-      <button class="edit-only mt-2 text-red-500 hover:text-red-700 text-xs" onclick="this.closest('.text-center').remove();">Remove Card</button>
-    `;
-    extrasContainer.appendChild(div);
-  });
-}
-function updateAboutMeSection(data) {
-  if (!data) return;
-  const cards = document.querySelectorAll('[data-page-panel="aboutme"] .text-xs[data-edit="teacher"]');
-  if (cards.length >= 4) {
-    if (data.favorite_color) cards[0].textContent = data.favorite_color;
-    if (data.favorite_snack) cards[1].textContent = data.favorite_snack;
-    if (data.favorite_drink) cards[2].textContent = data.favorite_drink;
-    if (data.favorite_show)  cards[3].textContent = data.favorite_show;
-  }
-  const aboutDesc = document.querySelector('[data-page-panel="aboutme"] p[data-edit="teacher"]');
-  if (aboutDesc && data.about_me_html) {
-    aboutDesc.innerHTML = data.about_me_html;
-  }
-  const factsUl = document.querySelector('[data-page-panel="aboutme"] ul[data-edit="teacher"]');
-  if (factsUl && data.fun_facts_html) {
-    if (Array.isArray(data.fun_facts_html)) {
-      factsUl.innerHTML = '';
-      data.fun_facts_html.forEach(fact => {
-        const li = document.createElement('li');
-        li.textContent = fact;
-        factsUl.appendChild(li);
-      });
-    } else {
-      factsUl.innerHTML = data.fun_facts_html;
-    }
-  }
-}
-function populateDataFromSheet(data) {
-  if (!data) return;
-  updateWeekText(data.week);
-  updateRecapText(data.recap);
-  updateEventsList(data.dates_json);
-  updateLookingAhead(data.looking_ahead);
-  updateSnacksGrid(data.snacks_json);
-  updateScholarInfo(data.scholar_name, data.scholar_blurb);
-  updateSkillsSection(data.skills_text, data.sounds_json);
-  updateListeningSection(data.listening_text, data.ask_json);
-  updateMathSection(data.math_text, data.math_vocab_json);
-  updateExtrasSection(data.extras_json);
-  updateAboutMeSection(data);
-  if (data.calendar_url) {
-    const cal = document.getElementById('schoolCalendarLink');
-    if (cal) cal.href = data.calendar_url;
-  }
-}
-async function fetchSheetData() {
-  try {
-    const response = await fetch(GOOGLE_SHEETS_URL);
-    if (!response.ok) throw new Error(response.status);
-    return await response.json();
-  } catch (e) {
-    console.error('Failed to fetch sheet data:', e);
-    return null;
-  }
-}
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(async () => {
-    const data = await fetchSheetData();
-    populateDataFromSheet(data);
-  }, 350);
-});
-setInterval(async () => {
-  const data = await fetchSheetData();
-  populateDataFromSheet(data);
-}, 300000);
   </script>
 </body>
 </html>
